@@ -97,7 +97,7 @@ macros isn't super helpful. One possible solution would be:
 
 While this 'works', it's an awful solution. It's extremely cumbersome and ugly (not to mention that `__LINE__` will now 
 be incorrect because the log is on the next line! I suppose you could put `__LINE__ - 1` but that makes this even worse!)
-Ok, so how can we fix this? We can use the new attach statement!
+Ok, so how can we fix this? We can use the new after statement!
 
     #ifdef DEBUG
     #after (mystruct_create, ()) log_memory_allocation(@after.result, __FILE__, __LINE__);
@@ -134,8 +134,8 @@ macro option. The `@` syntax is new, it specifies special options that come with
 later. Naturally, there is also a `#before` macro which attaches code before the operation rather than after. For now, 
 I want to showcase something interesting that can be done with this new preprocessor:
 
-    #after  (object*, =:) ++@after.instance->reference_counter;
-    #before (object*, :=) if(!--@before.instance->reference_counter){object_destroy(@before.instance);}
+    #after  (object*, =:) object_reference_up(@after.instance);
+    #before (object*, :=) object_reference_down(@before.instance);
 
     typedef struct {
       int reference_counter;
@@ -152,6 +152,16 @@ I want to showcase something interesting that can be done with this new preproce
       free(o);
     }
 
+    void object_reference_up(object* o){
+      ++o->reference_counter;
+    }
+
+    void object_reference_down(object* o){
+      if(!--object->reference_counter){
+        object_destroy(object);
+      }
+    }
+
     int main(){
       object* myobject = object_create();
       object* another_pointer = myobject;
@@ -166,4 +176,94 @@ after. This just means that the directive will match with all instances of that 
 Next we see `=:`. This sign will match whenever an `object*` is used as an rvalue, denoted by the colon on the right.
 Next we have `@after.instance`, this evaluates to the matched object, not the result of the operation as we saw in the
 previous example. Everything is similar in the `#before` statement.
+
+Here is a summary of all the new preprocessor features:
+
+    #after (<instance_name or type_name>, <@after.operation>) {}
+      @after.pre_increment - ++x
+      @after.post_increment - x++
+      @after.pre_decrement - --x
+      @after.post_decrement - x--
+      @after.compare                      ==
+      @after.lcompare                     :==
+      @after.rcompare                     ==:
+      @after.lvalue                       :=
+      @after.rvalue                       =:
+      @after.multiply
+      @after.add                          +
+      @after.divide                       /
+      @after.subtract                     -
+      @after.indirection                  ->
+      @after.dereference                  
+      @after.and                          &
+      @after.or                           |
+      @after.xor                          ^
+      @after.flip                         ~
+      @after.not                          !
+      @after.lshift                       <<  
+      @after.rshift                       >>
+      @after.call                         ()
+      @after.subscript                    []
+
+      @after.result: result of operation
+      @after.instance: if instance is used as first argument, it will be replaced here. If it's
+                       a type name, it will be the matched instance of the type name
+
+    #before (<instance_name or type_name>, <@before.operation>) {}
+      @before.pre_increment - ++x
+      @before.post_increment - x++
+      @before.pre_decrement - --x
+      @before.post_decrement - x--
+      @before.compare                      ==
+      @before.lcompare                     :==
+      @before.rcompare                     ==:
+      @before.lvalue                       :=
+      @before.rvalue                       =:
+      @before.multiply
+      @before.add                          +
+      @before.divide                       /
+      @before.subtract                     -
+      @before.indirection                  ->
+      @before.dereference                  
+      @before.and                          &
+      @before.or                           |
+      @before.xor                          ^
+      @before.flip                         ~
+      @before.not                          !
+      @before.lshift                       <<  
+      @before.rshift                       >>
+      @before.call                         ()
+      @before.subscript                    []
+
+      @before.result: result of operation
+      @before.instance: if instance is used as first argument, it will be replaced here. If it's
+                       a type name, it will be the matched instance of the type name
+
+## 3. Some new operators and syntax
+
+For readability, some of the classic logical operators are getting some new paint:
+
+    old:    new:
+    ==      equals
+    !       not
+    ||      or
+    &&      and
+
+NOTE: you may still use the old C style operators.
+
+Forever loops are a bit unsightly in C, so CC makes it a bit better:
+
+    forever{              for(;;){
+                <==>    
+    }                     }
+
+Unnamed functions can be defined on the fly, which is really nice:
+
+    int (*funcptr)(int a, int b) = (int a, int b) {
+      return a + b * a - b;
+    }
+
+    int (*foo)(int, int) = funcptr;
+    funcptr = NULL;
+    foo(2, 3);
 
