@@ -235,7 +235,6 @@ Here is a summary of all the new preprocessor features:
       @before.call                         ()
       @before.subscript                    []
 
-      @before.result: result of operation
       @before.instance: if instance is used as first argument, it will be replaced here. If it's
                        a type name, it will be the matched instance of the type name
 
